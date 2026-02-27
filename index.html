@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Time Timer — Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <section class="controls">
+      <label>Minutes: <input id="minutes" type="number" min="0" value="0"></label>
+      <label>Secondes: <input id="seconds" type="number" min="0" max="59" value="30"></label>
+      <button id="toggle">Démarrer</button>
+      <button id="reset">Réinitialiser</button>
+    </section>
+
+    <section class="timer-wrap">
+      <div class="timer" id="timer">
+        <svg id="svg" viewBox="-1 -1 2 2" preserveAspectRatio="xMidYMid meet" aria-hidden="false">
+          <circle cx="0" cy="0" r="1" class="bg" />
+          <path id="sector" class="sector" d="" />
+          <!-- inner circle removed so sector originates from center -->
+          <text id="timeLabel" x="0" y="0.12" text-anchor="middle" dominant-baseline="middle" font-size="0.22" class="time-text"></text>
+        </svg>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

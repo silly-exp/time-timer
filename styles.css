@@ -1,0 +1,26 @@
+:root{
+  --size: 80vmin;
+  --bg: #f3f3f3;
+  --circle-bg: #e6e6e6;
+  --inner-bg: #ffffff;
+  --accent: #e53935;
+  --text: #222;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+.page{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;background:var(--bg)}
+.controls{display:flex;gap:0.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+.controls label{font-size:0.95rem;color:var(--text)}
+.controls input{width:4.5rem;padding:0.25rem}
+.controls button{padding:0.45rem 0.7rem;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer}
+.timer-wrap{display:flex;align-items:center;justify-content:center;width:100%}
+.timer{width:var(--size);height:var(--size);max-width:calc(100% - 2rem);max-height:calc(100% - 2rem)}
+svg{width:100%;height:100%;display:block}
+.bg{fill:var(--circle-bg)}
+.sector{fill:var(--accent);transform-origin:0 0}
+.time-text{fill:var(--text);dominant-baseline:middle;font-weight:600}
+
+/* small screens tweak */
+@media (max-width:420px){
+  :root{--size:92vmin}
+}

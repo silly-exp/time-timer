@@ -1,8 +1,21 @@
-time_timer
-==========
+# Time Timer — Demo
 
-A very simple html time timer without flash
+Fichiers créés:
 
+- `index.html`
+- `styles.css`
+- `script.js`
 
-documentation pour l'implémentation:
-[vidéo html5 svg, canvas, webgl...](http://www.microsoftvirtualacademy.com/training-courses/graphismes-html5-gr-ce-svg-canvas-2d-et-webgl)
+Ouvrir `index.html` dans un navigateur pour tester. Pour servir localement (optionnel), depuis le dossier `timer` lancez:
+
+```powershell
+python -m http.server 8000
+
+# puis ouvrez http://localhost:8000
+```
+
+Fonctionnalités de base:
+
+- Paramétrer minutes et secondes
+- Démarrer / Pause / Réinitialiser
+- Visualisation type "time timer" avec secteur rouge qui décroît
