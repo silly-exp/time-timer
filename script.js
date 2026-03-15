@@ -69,6 +69,7 @@
             render();
             if (toggleBtn) toggleBtn.textContent = 'Démarrer';
             cancelAnimationFrame(timerId);
+            timerId = null;
             // optional: brief flash? keep simple for now
             return;
           }
@@ -86,7 +87,7 @@
       return;
     }
     // start / resume
-    setFromInputs();
+    setFromInputs(); //check
     if (remaining<=0) return;
     running = true;
     toggleBtn.textContent = 'Pause';
