@@ -7,12 +7,14 @@
   const sector = $('sector');
   const timeLabel = $('timeLabel');
 
-  let totalSeconds = 30;
+  let totalSeconds = 30; // initialisation systématiquement écrasée par la suite la valeur n'a pas d'utilité
   let remaining = totalSeconds;
   let timerId = null;
   let running = false;
 
   function setFromInputs(){
+    // calcule le temps total du timetimer
+    // affiche le disque plein à l'écran <-- FIXME est-ce bien son rôle?
     const m = Math.max(0, parseInt(minutesInput.value)||0);
     const s = Math.max(0, Math.min(59, parseInt(secondsInput.value)||0));
     totalSeconds = m*60 + s;
@@ -21,6 +23,7 @@
     render();
   }
 
+// -------------------- affichage -------------------------
   function formatTime(sec){
     const m = Math.floor(sec/60);
     const s = sec%60;
@@ -54,31 +57,32 @@
     timeLabel.textContent = formatTime(Math.ceil(remaining));
   }
 
+// -------------------- mécanique d'animation --------
   function tick(){
-    const start = performance.now();
-    let last = start;
+    let last =  performance.now();
     timerId = requestAnimationFrame(function loop(now){
       const delta = (now - last)/1000;
       last = now;
-      if (running){
-          remaining -= delta;
-          if (remaining <= 0){
-            remaining = 0;
-            running = false;
-            // final render
-            render();
-            if (toggleBtn) toggleBtn.textContent = 'Démarrer';
-            cancelAnimationFrame(timerId);
-            timerId = null;
-            // optional: brief flash? keep simple for now
-            return;
-          }
+      if (running){ // FIXME: on ne peut pas monter ce test plus haut?
+        remaining -= delta;
+        if (remaining <= 0){
+          remaining = 0;
+          running = false;
+          // final render
           render();
+          if (toggleBtn) toggleBtn.textContent = 'Démarrer';
+          cancelAnimationFrame(timerId);
+          timerId = null;
+          // optional: brief flash? keep simple for now
+          return;
         }
-      timerId = requestAnimationFrame(loop);
+        render();
+      }
+      timerId = requestAnimationFrame(loop); // cet appel est dans la spec, il permet d'afficher l'image suivante.
     });
   }
 
+// --------------------- interraction utilisateur  -----------------------
   toggleBtn.addEventListener('click', ()=>{
     if (running){
       // pause
@@ -87,8 +91,10 @@
       return;
     }
     // start / resume
-    setFromInputs(); //check
-    if (remaining<=0) return;
+    if (remaining<=0){
+      // s'il n'y a plus de temps restant on réinitialise le compteur à partir des paramètres utilisateur
+      setFromInputs();
+    };
     running = true;
     toggleBtn.textContent = 'Pause';
     if (!timerId) tick();
@@ -103,7 +109,7 @@
   minutesInput.addEventListener('change', setFromInputs);
   secondsInput.addEventListener('change', setFromInputs);
 
-  // initialize
+  // initialize le temps du time-timer et l'affichage correspondant.
   setFromInputs();
   // start the RAF loop even if not running so pause/resume is immediate
   tick();
