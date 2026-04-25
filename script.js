@@ -12,6 +12,14 @@
   let timerId = null;
   let running = false;
 
+  // Labels centralisés pour le bouton toggle
+  const LABELS = {
+    PLAY: '▶',
+    PAUSE: '⏸',
+    RESET: '⏮'
+  };
+
+
   function setFromInputs(){
     // calcule le temps total du timetimer
     // affiche le disque plein à l'écran <-- FIXME est-ce bien son rôle?
@@ -70,7 +78,7 @@
           running = false;
           // final render
           render();
-          if (toggleBtn) toggleBtn.textContent = 'Démarrer';
+          if (toggleBtn) toggleBtn.textContent = LABELS.PLAY;
           cancelAnimationFrame(timerId);
           timerId = null;
           // optional: brief flash? keep simple for now
@@ -83,11 +91,16 @@
   }
 
 // --------------------- interraction utilisateur  -----------------------
-  toggleBtn.addEventListener('click', ()=>{
+  // Initialisation du bouton toggle
+  toggleBtn.textContent = LABELS.PLAY;
+  resetBtn.textContent = LABELS.RESET;
+
+
+toggleBtn.addEventListener('click', ()=>{
     if (running){
       // pause
       running = false;
-      toggleBtn.textContent = 'Démarrer';
+      toggleBtn.textContent = LABELS.PLAY;
       return;
     }
     // start / resume
@@ -96,14 +109,14 @@
       setFromInputs();
     };
     running = true;
-    toggleBtn.textContent = 'Pause';
+    toggleBtn.textContent = LABELS.PAUSE;
     if (!timerId) tick();
   });
 
   resetBtn.addEventListener('click', ()=>{
     running = false;
     setFromInputs();
-    if (toggleBtn) toggleBtn.textContent = 'Démarrer';
+    if (toggleBtn) toggleBtn.textContent = LABELS.PLAY;
   });
 
   minutesInput.addEventListener('change', setFromInputs);
