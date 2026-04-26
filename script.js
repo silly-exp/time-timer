@@ -1,130 +1,218 @@
 (() => {
   const $ = id => document.getElementById(id);
-  const minutesInput = $('minutes');
-  const secondsInput = $('seconds');
-  const toggleBtn = $('toggle');
-  const resetBtn = $('reset');
-  const sector = $('sector');
-  const timeLabel = $('timeLabel');
+  const modeSelect   = $('modeSelect');
+  const modeControls = $('modeControls');
+  const sector       = $('sector');
+  const timeLabel    = $('timeLabel');
 
-  let totalSeconds = 30; // initialisation systématiquement écrasée par la suite la valeur n'a pas d'utilité
-  let remaining = totalSeconds;
-  let timerId = null;
-  let running = false;
+  // Core timer state (mode-agnostic)
+  let totalSeconds = 0;
+  let remaining    = 0;
+  let running      = false;
+  let timerId      = null;
+  let started      = false;
+  let activeMode   = null;
 
-  // Labels centralisés pour le bouton toggle
-  const LABELS = {
-    PLAY: '▶',
-    PAUSE: '⏸',
-    RESET: '⏮'
-  };
+  // ── Rendering (mode-agnostic) ────────────────────────────────────────────
 
-
-  function setFromInputs(){
-    // calcule le temps total du timetimer
-    // affiche le disque plein à l'écran <-- FIXME est-ce bien son rôle?
-    const m = Math.max(0, parseInt(minutesInput.value)||0);
-    const s = Math.max(0, Math.min(59, parseInt(secondsInput.value)||0));
-    totalSeconds = m*60 + s;
-    if (totalSeconds<=0) totalSeconds = 1;
-    remaining = totalSeconds;
-    render();
+  function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
-// -------------------- affichage -------------------------
-  function formatTime(sec){
-    const m = Math.floor(sec/60);
-    const s = sec%60;
-    return `${m}:${s.toString().padStart(2,'0')}`;
+  function polar(cx, cy, r, deg) {
+    const rad = deg * Math.PI / 180;
+    return { x: (cx + r * Math.cos(rad)).toFixed(6), y: (cy + r * Math.sin(rad)).toFixed(6) };
   }
 
-  // Draw sector as an SVG path (wedge) from top (12 o'clock) clockwise
-  function sectorPath(fraction){
-    // fraction in [0,1]
-    if (fraction<=0) return '';
-    // full circle: draw as two arcs from center
-    if (fraction >= 1) {
-      return 'M 0 0 m -1 0 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0';
-    }
-    const angle = fraction*360;
+  function sectorPath(fraction) {
+    if (fraction <= 0) return '';
+    if (fraction >= 1) return 'M 0 0 m -1 0 a 1 1 0 1 0 2 0 a 1 1 0 1 0 -2 0';
+    const angle = fraction * 360;
     const large = angle > 180 ? 1 : 0;
-    // start at top (0,-1) in our viewBox centered at 0,0 radius 1
-    const start = polar(0,0,1, -90);
-    const end = polar(0,0,1, -90 + angle);
+    const start = polar(0, 0, 1, -90);
+    const end   = polar(0, 0, 1, -90 + angle);
     return `M 0 0 L ${start.x} ${start.y} A 1 1 0 ${large} 1 ${end.x} ${end.y} Z`;
   }
 
-  function polar(cx,cy,r,deg){
-    const rad = deg * Math.PI/180;
-    return {x:(cx + r*Math.cos(rad)).toFixed(6), y:(cy + r*Math.sin(rad)).toFixed(6)};
-  }
-
-  function render(){
-    const frac = Math.max(0, Math.min(1, remaining / totalSeconds));
+  function render() {
+    const frac = totalSeconds > 0 ? Math.max(0, Math.min(1, remaining / totalSeconds)) : 1;
     sector.setAttribute('d', sectorPath(frac));
-    timeLabel.textContent = formatTime(Math.ceil(remaining));
+    timeLabel.textContent = totalSeconds > 0 ? formatTime(Math.ceil(remaining)) : '--:--';
   }
 
-// -------------------- mécanique d'animation --------
-  function tick(){
-    let last =  performance.now();
-    timerId = requestAnimationFrame(function loop(now){
-      const delta = (now - last)/1000;
+  // ── Animation (mode-agnostic) ────────────────────────────────────────────
+
+  function tick() {
+    let last = performance.now();
+    timerId = requestAnimationFrame(function loop(now) {
+      const delta = (now - last) / 1000;
       last = now;
-      if (running){ // FIXME: on ne peut pas monter ce test plus haut?
+      if (running) {
         remaining -= delta;
-        if (remaining <= 0){
+        if (remaining <= 0) {
           remaining = 0;
-          running = false;
-          // final render
+          running   = false;
           render();
-          if (toggleBtn) toggleBtn.textContent = LABELS.PLAY;
-          cancelAnimationFrame(timerId);
           timerId = null;
-          // optional: brief flash? keep simple for now
+          activeMode.syncButtons({ running, started });
           return;
         }
         render();
       }
-      timerId = requestAnimationFrame(loop); // cet appel est dans la spec, il permet d'afficher l'image suivante.
+      timerId = requestAnimationFrame(loop);
     });
   }
 
-// --------------------- interraction utilisateur  -----------------------
-  // Initialisation du bouton toggle
-  toggleBtn.textContent = LABELS.PLAY;
-  resetBtn.textContent = LABELS.RESET;
+  // ── Core actions ─────────────────────────────────────────────────────────
 
-
-toggleBtn.addEventListener('click', ()=>{
-    if (running){
-      // pause
-      running = false;
-      toggleBtn.textContent = LABELS.PLAY;
-      return;
+  function play() {
+    if (running) return;
+    if (!started || remaining <= 0 || activeMode.alwaysRecompute) {
+      const secs = activeMode.computeTotalSeconds();
+      if (secs <= 0) return;
+      totalSeconds = secs;
+      remaining    = secs;
     }
-    // start / resume
-    if (remaining<=0){
-      // s'il n'y a plus de temps restant on réinitialise le compteur à partir des paramètres utilisateur
-      setFromInputs();
-    };
+    started = true;
     running = true;
-    toggleBtn.textContent = LABELS.PAUSE;
+    render();
     if (!timerId) tick();
-  });
+    activeMode.syncButtons({ running, started });
+  }
 
-  resetBtn.addEventListener('click', ()=>{
+  function pause() {
+    if (!running) return;
     running = false;
-    setFromInputs();
-    if (toggleBtn) toggleBtn.textContent = LABELS.PLAY;
-  });
+    activeMode.syncButtons({ running, started });
+  }
 
-  minutesInput.addEventListener('change', setFromInputs);
-  secondsInput.addEventListener('change', setFromInputs);
+  function reset() {
+    running = false;
+    started = false;
+    activeMode.onReset();
+    render();
+    activeMode.syncButtons({ running, started });
+  }
 
-  // initialize le temps du time-timer et l'affichage correspondant.
-  setFromInputs();
-  // start the RAF loop even if not running so pause/resume is immediate
-  tick();
+  // ── Mode: Durée ──────────────────────────────────────────────────────────
 
+  const modeDuree = {
+    alwaysRecompute: false,
+
+    init(container) {
+      container.innerHTML = `
+        <label>Minutes : <input id="minutes" type="number" min="0" value="0"></label>
+        <label>Secondes : <input id="seconds" type="number" min="0" max="59" value="30"></label>
+        <button id="btnPlay">▶</button>
+        <button id="btnPause">⏸</button>
+        <button id="btnReset">⏮</button>
+      `;
+      this._play    = $('btnPlay');
+      this._pause   = $('btnPause');
+      this._reset   = $('btnReset');
+      this._minutes = $('minutes');
+      this._seconds = $('seconds');
+
+      this._play.addEventListener('click', play);
+      this._pause.addEventListener('click', pause);
+      this._reset.addEventListener('click', reset);
+
+      const onInputChange = () => {
+        if (!started) {
+          totalSeconds = this.computeTotalSeconds();
+          remaining    = totalSeconds;
+          render();
+        }
+      };
+      this._minutes.addEventListener('change', onInputChange);
+      this._seconds.addEventListener('change', onInputChange);
+    },
+
+    computeTotalSeconds() {
+      const m = Math.max(0, parseInt(this._minutes.value) || 0);
+      const s = Math.max(0, Math.min(59, parseInt(this._seconds.value) || 0));
+      return Math.max(1, m * 60 + s);
+    },
+
+    onReset() {
+      totalSeconds = this.computeTotalSeconds();
+      remaining    = totalSeconds;
+    },
+
+    syncButtons({ running, started }) {
+      this._play.style.display  = running  ? 'none' : '';
+      this._pause.style.display = running  ? ''     : 'none';
+      this._reset.style.display = started  ? ''     : 'none';
+    }
+  };
+
+  // ── Mode: Heure de fin ───────────────────────────────────────────────────
+
+  const modeHeureFin = {
+    alwaysRecompute: true,
+
+    init(container) {
+      const now = new Date();
+      now.setHours(now.getHours() + 1);
+      const hh = now.getHours().toString().padStart(2, '0');
+      const mm = now.getMinutes().toString().padStart(2, '0');
+
+      container.innerHTML = `
+        <label>Heure de fin : <input id="targetTime" type="time" value="${hh}:${mm}"></label>
+        <button id="btnPlay">▶</button>
+        <button id="btnReset">⏮</button>
+      `;
+      this._play       = $('btnPlay');
+      this._reset      = $('btnReset');
+      this._targetTime = $('targetTime');
+
+      this._play.addEventListener('click', play);
+      this._reset.addEventListener('click', reset);
+    },
+
+    computeTotalSeconds() {
+      if (!this._targetTime.value) return 0;
+      const [h, m] = this._targetTime.value.split(':').map(Number);
+      const now    = new Date();
+      const target = new Date(now);
+      target.setHours(h, m, 0, 0);
+      // si l'heure cible est déjà passée, c'est pour demain
+      if (target <= now) target.setDate(target.getDate() + 1);
+      return Math.round((target - now) / 1000);
+    },
+
+    onReset() {
+      totalSeconds = 0;
+      remaining    = 0;
+    },
+
+    syncButtons({ running }) {
+      this._play.style.display  = running ? 'none' : '';
+      this._reset.style.display = running ? ''     : 'none';
+    }
+  };
+
+  // ── Mode management ──────────────────────────────────────────────────────
+
+  const MODES = { duree: modeDuree, heureFin: modeHeureFin };
+
+  function activateMode(id) {
+    running = false;
+    started = false;
+    if (timerId !== null) {
+      cancelAnimationFrame(timerId);
+      timerId = null;
+    }
+    activeMode = MODES[id];
+    activeMode.init(modeControls);
+    activeMode.onReset();
+    render();
+    activeMode.syncButtons({ running, started });
+    tick();
+  }
+
+  modeSelect.addEventListener('change', () => activateMode(modeSelect.value));
+  activateMode('duree');
 })();

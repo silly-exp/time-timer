@@ -9,10 +9,15 @@
 <body>
   <main class="page">
     <section class="controls">
-      <label>Minutes: <input id="minutes" type="number" min="0" value="0"></label>
-      <label>Secondes: <input id="seconds" type="number" min="0" max="59" value="30"></label>
-      <button id="toggle">start_label</button>
-      <button id="reset">reset_label</button>
+      <div class="mode-row">
+        <label>Mode :
+          <select id="modeSelect">
+            <option value="duree">Durée</option>
+            <option value="heureFin">Heure de fin</option>
+          </select>
+        </label>
+      </div>
+      <div class="mode-controls" id="modeControls"></div>
     </section>
 
     <section class="timer-wrap">
